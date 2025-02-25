@@ -1,0 +1,77 @@
+import express from 'express';
+import pg from 'pg';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 5000;
+app.use(express.json());
+
+const pool = new pg.Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
+});
+
+// User Authentication
+app.post('/register', async (req, res) => {
+  const { name, email, password, role } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+  try {
+    await pool.query(
+      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+      [name, email, hashedPassword, role]
+    );
+    res.status(201).send('User registered');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) return res.status(401).send('User not found');
+    const user = result.rows[0];
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) return res.status(401).send('Invalid credentials');
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Inventory Routes (Example: Ingredients)
+app.post('/ingredients', async (req, res) => {
+  const { name, type, current_quantity, unit, cost_per_unit } = req.body;
+  try {
+    await pool.query(
+      'INSERT INTO ingredients (name, type, current_quantity, unit, cost_per_unit) VALUES ($1, $2, $3, $4, $5)',
+      [name, type, current_quantity, unit, cost_per_unit]
+    );
+    res.status(201).send('Ingredient added');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+app.get('/ingredients', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM ingredients');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Start Server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});

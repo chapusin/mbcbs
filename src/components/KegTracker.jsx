@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import ReactDOM from 'react-dom'
 import { supabase } from '../supabaseClient'
 import StatusBadge from './StatusBadge'
 
@@ -325,103 +326,104 @@ export default function KegTracker() {
         </div>
       </div>
 
-      {/* Modal Overlay */}
-      {showModal && (
+      {/* Modal — rendered via portal so it's always viewport-centered */}
+      {showModal && ReactDOM.createPortal(
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          zIndex: 1000, overflowY: 'auto'
+          zIndex: 9999, overflowY: 'auto'
         }} onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
-        <div style={{
-          minHeight: '100%', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', padding: 16
-        }}>
           <div style={{
-            background: 'var(--dark-2)', border: '1px solid var(--dark-3)',
-            borderRadius: 12, width: '100%', maxWidth: 480,
-            boxShadow: '0 24px 64px rgba(0,0,0,0.6)'
-          }} className="fade-in">
-            {/* Modal Header */}
+            minHeight: '100%', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', padding: 16
+          }}>
             <div style={{
-              padding: '20px 24px', borderBottom: '1px solid var(--dark-3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-            }}>
-              <h3 className="font-display text-2xl" style={{ color: 'var(--amber)' }}>
-                {bulkEdit ? `BULK EDIT (${selectedKegs.length})` : currentKeg.id ? 'EDIT KEG' : 'ADD NEW KEG'}
-              </h3>
-              <button onClick={() => setShowModal(false)} style={{
-                background: 'none', border: 'none', color: 'var(--muted)',
-                fontSize: 20, cursor: 'pointer', lineHeight: 1
-              }}>✕</button>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Keg ID */}
-              <div>
-                <label style={s.label}>Keg ID {bulkEdit && <span style={{ color: 'var(--muted)' }}>(locked in bulk edit)</span>}</label>
-                <input type="text" style={{ ...s.input, opacity: bulkEdit ? 0.4 : 1 }}
-                  value={currentKeg.keg_id} disabled={bulkEdit}
-                  onChange={e => setCurrentKeg({ ...currentKeg, keg_id: e.target.value })} />
+              background: 'var(--dark-2)', border: '1px solid var(--dark-3)',
+              borderRadius: 12, width: '100%', maxWidth: 480,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.6)'
+            }} className="fade-in">
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px 24px', borderBottom: '1px solid var(--dark-3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <h3 className="font-display text-2xl" style={{ color: 'var(--amber)' }}>
+                  {bulkEdit ? `BULK EDIT (${selectedKegs.length})` : currentKeg.id ? 'EDIT KEG' : 'ADD NEW KEG'}
+                </h3>
+                <button onClick={() => setShowModal(false)} style={{
+                  background: 'none', border: 'none', color: 'var(--muted)',
+                  fontSize: 20, cursor: 'pointer', lineHeight: 1
+                }}>✕</button>
               </div>
 
-              {/* Location */}
-              <div>
-                <label style={s.label}>Location</label>
-                <input type="text" style={s.input} value={currentKeg.location}
-                  onChange={e => setCurrentKeg({ ...currentKeg, location: e.target.value })} />
-              </div>
-
-              {/* Status */}
-              <div>
-                <label style={s.label}>Status</label>
-                <select style={s.input} value={currentKeg.status}
-                  onChange={e => setCurrentKeg({ ...currentKeg, status: e.target.value })}>
-                  {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-
-              {/* Date */}
-              <div>
-                <label style={s.label}>Date</label>
-                <input type="date" style={s.input} value={currentKeg.date}
-                  onChange={e => setCurrentKeg({ ...currentKeg, date: e.target.value })} />
-              </div>
-
-              {/* Beer */}
-              <div>
-                <label style={s.label}>Size</label>
-                <input type="text" style={s.input} placeholder="e.g. 20L, 50L, 60L" value={currentKeg.size}
-                  onChange={e => setCurrentKeg({ ...currentKeg, size: e.target.value })} />
-              </div>
-
-              {/* Two col: Batch + Invoice */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Modal Body */}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Keg ID */}
                 <div>
-                  <label style={s.label}>Batch Number</label>
-                  <input type="text" style={s.input} value={currentKeg.batch_number}
-                    onChange={e => setCurrentKeg({ ...currentKeg, batch_number: e.target.value })} />
+                  <label style={s.label}>Keg ID {bulkEdit && <span style={{ color: 'var(--muted)' }}>(locked in bulk edit)</span>}</label>
+                  <input type="text" style={{ ...s.input, opacity: bulkEdit ? 0.4 : 1 }}
+                    value={currentKeg.keg_id} disabled={bulkEdit}
+                    onChange={e => setCurrentKeg({ ...currentKeg, keg_id: e.target.value })} />
                 </div>
+
+                {/* Location */}
                 <div>
-                  <label style={s.label}>Invoice Number</label>
-                  <input type="text" style={s.input} value={currentKeg.invoice_number}
-                    onChange={e => setCurrentKeg({ ...currentKeg, invoice_number: e.target.value })} />
+                  <label style={s.label}>Location</label>
+                  <input type="text" style={s.input} value={currentKeg.location}
+                    onChange={e => setCurrentKeg({ ...currentKeg, location: e.target.value })} />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label style={s.label}>Status</label>
+                  <select style={s.input} value={currentKeg.status}
+                    onChange={e => setCurrentKeg({ ...currentKeg, status: e.target.value })}>
+                    {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label style={s.label}>Date</label>
+                  <input type="date" style={s.input} value={currentKeg.date}
+                    onChange={e => setCurrentKeg({ ...currentKeg, date: e.target.value })} />
+                </div>
+
+                {/* Size */}
+                <div>
+                  <label style={s.label}>Size</label>
+                  <input type="text" style={s.input} placeholder="e.g. 20L, 50L, 60L" value={currentKeg.size}
+                    onChange={e => setCurrentKeg({ ...currentKeg, size: e.target.value })} />
+                </div>
+
+                {/* Two col: Batch + Invoice */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={s.label}>Batch Number</label>
+                    <input type="text" style={s.input} value={currentKeg.batch_number}
+                      onChange={e => setCurrentKeg({ ...currentKeg, batch_number: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={s.label}>Invoice Number</label>
+                    <input type="text" style={s.input} value={currentKeg.invoice_number}
+                      onChange={e => setCurrentKeg({ ...currentKeg, invoice_number: e.target.value })} />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Modal Footer */}
-            <div style={{
-              padding: '16px 24px', borderTop: '1px solid var(--dark-3)',
-              display: 'flex', justifyContent: 'flex-end', gap: 10
-            }}>
-              <button style={s.btn('ghost')} onClick={() => setShowModal(false)}>Cancel</button>
-              <button style={s.btn('primary')} onClick={saveKeg} disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
+              {/* Modal Footer */}
+              <div style={{
+                padding: '16px 24px', borderTop: '1px solid var(--dark-3)',
+                display: 'flex', justifyContent: 'flex-end', gap: 10
+              }}>
+                <button style={s.btn('ghost')} onClick={() => setShowModal(false)}>Cancel</button>
+                <button style={s.btn('primary')} onClick={saveKeg} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

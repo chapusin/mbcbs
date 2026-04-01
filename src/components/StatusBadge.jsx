@@ -1,17 +1,18 @@
 import React from 'react'
 
-const statusClass = {
-  'Clean/In Stock':    'status-clean',
-  'Full/In Stock':     'status-full',
-  'Delivered/Remote':  'status-delivered',
-  'Dirty/In Stock':    'status-dirty',
-  'Dirty/Washing':     'status-washing',
+const statusClass = (status = '') => {
+  const s = status.toLowerCase().replace(/[^a-z]/g, '')
+  if (s.includes('clean'))    return 'status-clean'
+  if (s.includes('full') && !s.includes('deliver') && !s.includes('remote')) return 'status-full'
+  if (s.includes('deliver') || s.includes('remote')) return 'status-delivered'
+  if (s.includes('wash'))     return 'status-washing'
+  if (s.includes('dirty'))    return 'status-dirty'
+  return 'status-dirty' // fallback
 }
 
 export default function StatusBadge({ status }) {
-  const cls = statusClass[status] || 'status-dirty'
   return (
-    <span className={cls} style={{
+    <span className={statusClass(status)} style={{
       display: 'inline-block',
       padding: '2px 10px',
       borderRadius: 20,

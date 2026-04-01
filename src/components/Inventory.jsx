@@ -2,23 +2,22 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import StatusBadge from './StatusBadge'
 
-const STATUS_ORDER = [
-  'Clean/In Stock',
-  'Full/In Stock',
-  'Delivered/Remote',
-  'Dirty/In Stock',
-  'Dirty/Washing',
-]
-
-// Extract beer name from batch_number (strip trailing digits)
+// Extract beer name from batch_number prefix (letters only)
 // e.g. "CONIFERO00263012926" -> "CONIFERO"
 const extractBeer = (batch_number = '') => {
   const match = batch_number.match(/^([A-Z]+)/)
-  return match ? match[1] : batch_number
+  return match ? match[1] : null
+}
+
+// Check if a status string means "Full & In Stock" regardless of exact formatting
+// Handles: "Full/In Stock", "Full | In stock", "Full/in stock", etc.
+const isFullInStock = (status = '') => {
+  const s = status.toLowerCase().replace(/[^a-z]/g, '')
+  return s.includes('full') && s.includes('instock') && !s.includes('deliver') && !s.includes('remote')
 }
 
 export default function Inventory() {
-  const [kegs, setKegs]     = useState([])
+  const [kegs, setKegs]       = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchKegs() }, [])
@@ -34,20 +33,25 @@ export default function Inventory() {
     setLoading(false)
   }
 
-  // ── Status summary (counts across ALL kegs) ───────────────────
-  const statusSummary = STATUS_ORDER.map(status => ({
-    status,
-    count: kegs.filter(k => k.status === status).length
-  }))
+  // ── Status summary: dynamic — counts every status that exists in DB ──
+  const statusCounts = kegs.reduce((acc, keg) => {
+    const s = keg.status || 'Unknown'
+    acc[s] = (acc[s] || 0) + 1
+    return acc
+  }, {})
+  // Sort by count descending
+  const statusSummary = Object.entries(statusCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([status, count]) => ({ status, count }))
 
-  // ── Beer × Size breakdown ─────────────────────────────────────
-  // Collect all unique sizes and beer names (from batch_number prefix)
-  const allSizes = [...new Set(kegs.map(k => k.size).filter(Boolean))].sort()
-  const allBeers = [...new Set(kegs.map(k => extractBeer(k.batch_number || '')).filter(Boolean))].sort()
+  // ── Beer x Size breakdown — ONLY Full/In Stock kegs ──────────
+  const fullInStockKegs = kegs.filter(k => isFullInStock(k.status || ''))
 
-  // Build a map: { beerName: { size: count } }
+  const allSizes = [...new Set(fullInStockKegs.map(k => k.size).filter(Boolean))].sort()
+  const allBeers = [...new Set(fullInStockKegs.map(k => extractBeer(k.batch_number || '')).filter(Boolean))].sort()
+
   const beerSizeMap = {}
-  kegs.forEach(keg => {
+  fullInStockKegs.forEach(keg => {
     const beer = extractBeer(keg.batch_number || '')
     const size = keg.size
     if (!beer || !size) return
@@ -110,13 +114,15 @@ export default function Inventory() {
 
       {/* ── Status Summary Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
-        {statusSummary.map(({ status, count }) => (
+        {loading ? (
+          <div style={{ gridColumn: '1/-1', color: 'var(--muted)', fontSize: 14 }}>Loading…</div>
+        ) : statusSummary.map(({ status, count }) => (
           <div key={status} style={{ ...s.card, padding: '16px 20px' }}>
             <div style={{
               fontSize: 36, fontWeight: 700, color: 'var(--amber)',
               fontFamily: 'Bebas Neue, sans-serif', lineHeight: 1, marginBottom: 8
             }}>
-              {loading ? '—' : count}
+              {count}
             </div>
             <StatusBadge status={status} />
           </div>
@@ -128,11 +134,15 @@ export default function Inventory() {
         {/* Table header */}
         <div style={{
           padding: '16px 20px', borderBottom: '1px solid var(--dark-3)',
-          background: 'var(--dark-3)'
+          background: 'var(--dark-3)',
+          display: 'flex', alignItems: 'baseline', gap: 12
         }}>
           <h3 className="font-display text-2xl" style={{ color: 'var(--amber)', lineHeight: 1 }}>
-            KEG INVENTORY BY BEER
+            FULL KEGS IN STOCK
           </h3>
+          <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+            {fullInStockKegs.length} keg{fullInStockKegs.length !== 1 ? 's' : ''}
+          </span>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -193,7 +203,7 @@ export default function Inventory() {
                     Total
                   </td>
                   {allSizes.map(size => {
-                    const colTotal = kegs.filter(k => k.size === size).length
+                    const colTotal = fullInStockKegs.filter(k => k.size === size).length
                     return (
                       <td key={size} style={{ ...s.tdNum, fontWeight: 700, color: 'var(--light)' }}>
                         {colTotal}
@@ -201,7 +211,7 @@ export default function Inventory() {
                     )
                   })}
                   <td style={{ ...s.tdNum, fontWeight: 700, color: 'var(--amber)', borderLeft: '1px solid var(--dark-3)' }}>
-                    {kegs.filter(k => k.size).length}
+                    {fullInStockKegs.filter(k => k.size).length}
                   </td>
                 </tr>
               )}

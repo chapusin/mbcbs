@@ -329,10 +329,12 @@ export default function KegTracker() {
       {showModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16,
-          overflowY: 'auto'
+          zIndex: 1000, overflowY: 'auto'
         }} onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
+        <div style={{
+          minHeight: '100%', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: 16
+        }}>
           <div style={{
             background: 'var(--dark-2)', border: '1px solid var(--dark-3)',
             borderRadius: 12, width: '100%', maxWidth: 480,
@@ -418,6 +420,7 @@ export default function KegTracker() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       )}
     </div>

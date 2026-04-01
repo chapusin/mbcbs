@@ -330,7 +330,8 @@ export default function KegTracker() {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16
+          zIndex: 1000, padding: 16,
+          overflowY: 'auto'
         }} onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
           <div style={{
             background: 'var(--dark-2)', border: '1px solid var(--dark-3)',

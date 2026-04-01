@@ -15,14 +15,14 @@ const SEARCH_FIELDS = [
   { value: 'location',       label: 'Location' },
   { value: 'status',         label: 'Status' },
   { value: 'date',           label: 'Date' },
-  { value: 'beer',           label: 'Beer' },
+  { value: 'size',           label: 'Size' },
   { value: 'batch_number',   label: 'Batch Number' },
   { value: 'invoice_number', label: 'Invoice Number' },
 ]
 
 const EMPTY_KEG = {
   keg_id: '', location: '', status: 'Clean/In Stock',
-  date: '', beer: '', batch_number: '', invoice_number: ''
+  date: '', size: '', batch_number: '', invoice_number: ''
 }
 
 export default function KegTracker() {
@@ -66,9 +66,9 @@ export default function KegTracker() {
     setSaving(true)
     if (bulkEdit) {
       for (const id of selectedKegs) {
-        const { location, status, date, beer, batch_number, invoice_number } = currentKeg
+        const { location, status, date, size, batch_number, invoice_number } = currentKeg
         const { error } = await supabase.from('kegs')
-          .update({ location, status, date, beer, batch_number, invoice_number })
+          .update({ location, status, date, size, batch_number, invoice_number })
           .eq('id', id)
         if (error) { console.error(error); showToast('Bulk update failed', 'error'); setSaving(false); return }
       }
@@ -279,7 +279,7 @@ export default function KegTracker() {
                 <th style={s.th}>Location</th>
                 <th style={s.th}>Status</th>
                 <th style={s.th}>Date</th>
-                <th style={s.th}>Beer</th>
+                <th style={s.th}>Size</th>
                 <th style={s.th}>Batch #</th>
                 <th style={s.th}>Invoice #</th>
                 <th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
@@ -309,7 +309,7 @@ export default function KegTracker() {
                   <td style={s.td}>{keg.location || '—'}</td>
                   <td style={s.td}><StatusBadge status={keg.status} /></td>
                   <td style={{ ...s.td, color: 'var(--muted)' }}>{keg.date || '—'}</td>
-                  <td style={s.td}>{keg.beer || '—'}</td>
+                  <td style={s.td}>{keg.size || '—'}</td>
                   <td style={{ ...s.td, color: 'var(--muted)' }}>{keg.batch_number || '—'}</td>
                   <td style={{ ...s.td, color: 'var(--muted)' }}>{keg.invoice_number || '—'}</td>
                   <td style={{ ...s.td, textAlign: 'right' }}>
@@ -386,9 +386,9 @@ export default function KegTracker() {
 
               {/* Beer */}
               <div>
-                <label style={s.label}>Beer</label>
-                <input type="text" style={s.input} value={currentKeg.beer}
-                  onChange={e => setCurrentKeg({ ...currentKeg, beer: e.target.value })} />
+                <label style={s.label}>Size</label>
+                <input type="text" style={s.input} placeholder="e.g. 20L, 50L, 60L" value={currentKeg.size}
+                  onChange={e => setCurrentKeg({ ...currentKeg, size: e.target.value })} />
               </div>
 
               {/* Two col: Batch + Invoice */}

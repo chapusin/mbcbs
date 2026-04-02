@@ -1,22 +1,60 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 import KegTracker from './components/KegTracker'
 import Inventory from './components/Inventory'
+import Login from './components/Login'
 
 const tabs = [
-  { id: 'tracker', label: 'Keg Tracker' },
+  { id: 'tracker',   label: 'Keg Tracker' },
   { id: 'inventory', label: 'Inventory' },
 ]
 
 export default function App() {
+  const [session, setSession]   = useState(undefined) // undefined = loading
   const [activeTab, setActiveTab] = useState('tracker')
 
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    // Listen for auth changes (login / logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
+
+  // Still checking session
+  if (session === undefined) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--dark)'
+      }}>
+        <div style={{ color: 'var(--muted)', fontSize: 14 }}>Loading…</div>
+      </div>
+    )
+  }
+
+  // Not logged in
+  if (!session) return <Login />
+
+  // Logged in
   return (
     <div className="min-h-screen" style={{ background: 'var(--dark)' }}>
       {/* Header */}
       <header style={{ background: 'var(--dark-2)', borderBottom: '1px solid var(--dark-3)' }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+
+          {/* Logo */}
           <div className="flex items-center gap-3">
-            {/* Keg icon */}
             <div style={{
               width: 40, height: 40, borderRadius: 8,
               background: 'var(--amber)',
@@ -34,33 +72,49 @@ export default function App() {
             </h1>
           </div>
 
-          {/* Tab Nav */}
-          <nav className="flex gap-1" style={{
-            background: 'var(--dark-3)',
-            borderRadius: 8,
-            padding: 4
-          }}>
-            {tabs.map(tab => (
+          {/* Right side: tabs + user + logout */}
+          <div className="flex items-center gap-4">
+
+            {/* Tab Nav */}
+            <nav className="flex gap-1" style={{ background: 'var(--dark-3)', borderRadius: 8, padding: 4 }}>
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    padding: '7px 20px', borderRadius: 6, border: 'none',
+                    cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                    fontWeight: 500, fontSize: 14, transition: 'all 0.2s ease',
+                    background: activeTab === tab.id ? 'var(--amber)' : 'transparent',
+                    color: activeTab === tab.id ? 'var(--dark)' : 'var(--muted)',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            {/* User info + logout */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ color: 'var(--muted)', fontSize: 13, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {session.user.email}
+              </span>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={handleLogout}
                 style={{
-                  padding: '7px 20px',
-                  borderRadius: 6,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontWeight: 500,
-                  fontSize: 14,
-                  transition: 'all 0.2s ease',
-                  background: activeTab === tab.id ? 'var(--amber)' : 'transparent',
-                  color: activeTab === tab.id ? 'var(--dark)' : 'var(--muted)',
+                  padding: '6px 14px', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--dark-3)',
+                  color: 'var(--muted)', cursor: 'pointer',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 500,
+                  transition: 'all 0.15s',
                 }}
+                onMouseEnter={e => { e.target.style.borderColor = '#78716C'; e.target.style.color = '#FAFAF9' }}
+                onMouseLeave={e => { e.target.style.borderColor = 'var(--dark-3)'; e.target.style.color = 'var(--muted)' }}
               >
-                {tab.label}
+                Sign out
               </button>
-            ))}
-          </nav>
+            </div>
+          </div>
         </div>
       </header>
 

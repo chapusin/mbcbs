@@ -44,8 +44,9 @@ export default function Inventory() {
     .sort((a, b) => b[1] - a[1])
     .map(([status, count]) => ({ status, count }))
 
-  // ── Beer x Size breakdown — ONLY Full/In Stock kegs ──────────
-  const fullInStockKegs = kegs.filter(k => isFullInStock(k.status || ''))
+  // ── Beer x Size breakdown — ONLY Full/In Stock kegs, exclude cans ──
+  const CAN_SIZES = ['CAN12', 'CAN16']
+  const fullInStockKegs = kegs.filter(k => isFullInStock(k.status || '') && !CAN_SIZES.includes(k.size))
 
   const allSizes = [...new Set(fullInStockKegs.map(k => k.size).filter(Boolean))].sort()
   const allBeers = [...new Set(fullInStockKegs.map(k => extractBeer(k.batch_number || '')).filter(Boolean))].sort()
@@ -58,6 +59,9 @@ export default function Inventory() {
     if (!beerSizeMap[beer]) beerSizeMap[beer] = {}
     beerSizeMap[beer][size] = (beerSizeMap[beer][size] || 0) + 1
   })
+
+  // ── Cans In Stock — Full/In Stock with CAN12 or CAN16 ────────
+  const cansInStock = kegs.filter(k => isFullInStock(k.status || '') && CAN_SIZES.includes(k.size))
 
   // ── Styles ────────────────────────────────────────────────────
   const s = {
@@ -215,6 +219,60 @@ export default function Inventory() {
                   </td>
                 </tr>
               )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {/* ── Cans In Stock ── */}
+      <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginTop: 24 }}>
+        <div style={{
+          padding: '16px 20px', borderBottom: '1px solid var(--dark-3)',
+          background: 'var(--dark-3)',
+          display: 'flex', alignItems: 'baseline', gap: 12
+        }}>
+          <h3 className="font-display text-2xl" style={{ color: '#A5B4FC', lineHeight: 1 }}>
+            CANS IN STOCK
+          </h3>
+          <span style={{ color: 'var(--muted)', fontSize: 13 }}>
+            {cansInStock.length} entr{cansInStock.length !== 1 ? 'ies' : 'y'}
+          </span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'rgba(28,25,23,0.6)' }}>
+                <th style={s.th}>Keg ID</th>
+                <th style={s.th}>Location</th>
+                <th style={s.th}>Size</th>
+                <th style={s.th}>Status</th>
+                <th style={s.th}>Batch Name</th>
+                <th style={s.th}>Invoice #</th>
+                <th style={{ ...s.thNum }}>Can Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: 'var(--muted)', padding: 40 }}>Loading…</td></tr>
+              ) : cansInStock.length === 0 ? (
+                <tr><td colSpan={7} style={{ ...s.td, textAlign: 'center', color: 'var(--muted)', padding: 40 }}>No cans in stock</td></tr>
+              ) : cansInStock.map((keg) => (
+                <tr key={keg.id} className="keg-row">
+                  <td style={{ ...s.td, fontWeight: 600, color: '#A5B4FC' }}>{keg.keg_id}</td>
+                  <td style={s.td}>{keg.location || '—'}</td>
+                  <td style={s.td}>
+                    <span style={{
+                      display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600,
+                      background: 'rgba(99,102,241,0.15)', color: '#A5B4FC', border: '1px solid rgba(99,102,241,0.3)'
+                    }}>{keg.size}</span>
+                  </td>
+                  <td style={s.td}><StatusBadge status={keg.status} /></td>
+                  <td style={{ ...s.td, color: 'var(--amber)', fontWeight: 600 }}>{keg.batch_number || '—'}</td>
+                  <td style={{ ...s.td, color: 'var(--muted)' }}>{keg.invoice_number || '—'}</td>
+                  <td style={{ ...s.tdNum, fontWeight: 700, color: keg.can_count != null ? 'var(--light)' : 'var(--dark-3)' }}>
+                    {keg.can_count != null ? keg.can_count : '—'}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

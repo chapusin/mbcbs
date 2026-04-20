@@ -39,6 +39,7 @@ export default function KegTracker() {
   const [showModal, setShowModal]           = useState(false)
   const [selectedKegs, setSelectedKegs]     = useState([])
   const [bulkEdit, setBulkEdit]             = useState(false)
+  const [bulkChanges, setBulkChanges]       = useState({}) // tracks which fields were touched
   const [currentKeg, setCurrentKeg]         = useState(EMPTY_ENTRY)
   const [saving, setSaving]                 = useState(false)
   const [toast, setToast]                   = useState(null)
@@ -70,11 +71,19 @@ export default function KegTracker() {
   const saveKeg = async () => {
     setSaving(true)
     if (bulkEdit) {
+      // Only update fields the user actually changed
+      if (Object.keys(bulkChanges).length === 0) {
+        showToast('No fields were changed', 'error')
+        setSaving(false)
+        return
+      }
+      // If can_count is in changes, parse it
+      const payload = { ...bulkChanges }
+      if ('can_count' in payload) {
+        payload.can_count = payload.can_count !== '' ? parseInt(payload.can_count) : null
+      }
       for (const id of selectedKegs) {
-        const { location, status, date, size, batch_number, invoice_number, can_count } = currentKeg
-        const { error } = await supabase.from('kegs')
-          .update({ location, status, date, size, batch_number, invoice_number, can_count: can_count !== '' ? parseInt(can_count) : null })
-          .eq('id', id)
+        const { error } = await supabase.from('kegs').update(payload).eq('id', id)
         if (error) { console.error(error); showToast('Bulk update failed', 'error'); setSaving(false); return }
       }
       showToast(`Updated ${selectedKegs.length} entries`)
@@ -107,10 +116,16 @@ export default function KegTracker() {
   const toggleSelect  = (id) => setSelectedKegs(prev => prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id])
   const toggleSelectAll = () => selectedKegs.length === kegs.length ? setSelectedKegs([]) : setSelectedKegs(kegs.map(k => k.id))
 
-  const openAdd      = () => { setCurrentKeg(EMPTY_ENTRY); setBulkEdit(false); setShowModal(true) }
-  const openEdit     = (keg) => { setCurrentKeg({ ...keg, can_count: keg.can_count ?? '' }); setBulkEdit(false); setShowModal(true) }
-  const openBulkEdit = () => { setCurrentKeg({ ...EMPTY_ENTRY, keg_id: '—' }); setBulkEdit(true); setShowModal(true) }
+  const openAdd      = () => { setCurrentKeg(EMPTY_ENTRY); setBulkEdit(false); setBulkChanges({}); setShowModal(true) }
+  const openEdit     = (keg) => { setCurrentKeg({ ...keg, can_count: keg.can_count ?? '' }); setBulkEdit(false); setBulkChanges({}); setShowModal(true) }
+  const openBulkEdit = () => { setCurrentKeg({ ...EMPTY_ENTRY, keg_id: '—' }); setBulkEdit(true); setBulkChanges({}); setShowModal(true) }
   const clearSearch  = () => { setSearchTerm(''); setDateRange({ start: '', end: '' }); setTimeout(fetchKegs, 0) }
+
+  // Helper: update a field and mark it as changed during bulk edit
+  const updateField = (field, value) => {
+    setCurrentKeg(prev => ({ ...prev, [field]: value }))
+    if (bulkEdit) setBulkChanges(prev => ({ ...prev, [field]: value }))
+  }
 
   const s = {
     card:  { background: 'var(--dark-2)', border: '1px solid var(--dark-3)', borderRadius: 12, padding: 24 },
@@ -264,58 +279,101 @@ export default function KegTracker() {
               {/* Body */}
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+                {/* Bulk edit hint */}
+                {bulkEdit && (
+                  <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--muted)' }}>
+                    Only fields you <span style={{ color: 'var(--amber)', fontWeight: 600 }}>edit</span> will be updated. Untouched fields stay as-is on each keg.
+                  </div>
+                )}
+
+                {/* Helper to style fields: dim untouched bulk-edit fields */}
+                {/* Keg ID — locked in bulk */}
                 <div>
                   <label style={s.label}>Keg ID {bulkEdit && <span style={{ color: 'var(--muted)', textTransform: 'none', fontSize: 11 }}>(locked in bulk edit)</span>}</label>
-                  <input type="text" style={{ ...s.input, opacity: bulkEdit ? 0.4 : 1 }} value={currentKeg.keg_id} disabled={bulkEdit}
-                    onChange={e => setCurrentKeg({ ...currentKeg, keg_id: e.target.value })} />
+                  <input type="text" style={{ ...s.input, opacity: bulkEdit ? 0.35 : 1 }} value={currentKeg.keg_id} disabled={bulkEdit}
+                    onChange={e => updateField('keg_id', e.target.value)} />
                 </div>
 
+                {/* Location */}
                 <div>
-                  <label style={s.label}>Location</label>
-                  <input type="text" style={s.input} value={currentKeg.location}
-                    onChange={e => setCurrentKeg({ ...currentKeg, location: e.target.value })} />
+                  <label style={{ ...s.label, color: bulkEdit && bulkChanges.location !== undefined ? 'var(--amber)' : 'var(--muted)' }}>
+                    Location {bulkEdit && bulkChanges.location !== undefined && <span style={{ fontSize: 10, marginLeft: 6 }}>● will update</span>}
+                  </label>
+                  <input type="text" style={{ ...s.input, opacity: bulkEdit && bulkChanges.location === undefined ? 0.45 : 1, borderColor: bulkEdit && bulkChanges.location !== undefined ? 'var(--amber)' : '#44403C' }}
+                    value={currentKeg.location} placeholder={bulkEdit ? 'Leave blank to keep existing…' : ''}
+                    onChange={e => updateField('location', e.target.value)} />
                 </div>
 
+                {/* Status */}
                 <div>
-                  <label style={s.label}>Status</label>
-                  <select style={s.input} value={currentKeg.status} onChange={e => setCurrentKeg({ ...currentKeg, status: e.target.value })}>
+                  <label style={{ ...s.label, color: bulkEdit && bulkChanges.status !== undefined ? 'var(--amber)' : 'var(--muted)' }}>
+                    Status {bulkEdit && bulkChanges.status !== undefined && <span style={{ fontSize: 10, marginLeft: 6 }}>● will update</span>}
+                  </label>
+                  <select style={{ ...s.input, opacity: bulkEdit && bulkChanges.status === undefined ? 0.45 : 1, borderColor: bulkEdit && bulkChanges.status !== undefined ? 'var(--amber)' : '#44403C' }}
+                    value={currentKeg.status} onChange={e => updateField('status', e.target.value)}>
+                    {bulkEdit && bulkChanges.status === undefined && <option value="">— keep existing —</option>}
                     {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
 
+                {/* Date */}
                 <div>
-                  <label style={s.label}>Date</label>
-                  <input type="date" style={s.input} value={currentKeg.date}
-                    onChange={e => setCurrentKeg({ ...currentKeg, date: e.target.value })} />
+                  <label style={{ ...s.label, color: bulkEdit && bulkChanges.date !== undefined ? 'var(--amber)' : 'var(--muted)' }}>
+                    Date {bulkEdit && bulkChanges.date !== undefined && <span style={{ fontSize: 10, marginLeft: 6 }}>● will update</span>}
+                  </label>
+                  <input type="date" style={{ ...s.input, opacity: bulkEdit && bulkChanges.date === undefined ? 0.45 : 1, borderColor: bulkEdit && bulkChanges.date !== undefined ? 'var(--amber)' : '#44403C' }}
+                    value={currentKeg.date} onChange={e => updateField('date', e.target.value)} />
                 </div>
 
+                {/* Size */}
                 <div>
-                  <label style={s.label}>Size</label>
-                  <select style={s.input} value={currentKeg.size} onChange={e => setCurrentKeg({ ...currentKeg, size: e.target.value })}>
+                  <label style={{ ...s.label, color: bulkEdit && bulkChanges.size !== undefined ? 'var(--amber)' : 'var(--muted)' }}>
+                    Size {bulkEdit && bulkChanges.size !== undefined && <span style={{ fontSize: 10, marginLeft: 6 }}>● will update</span>}
+                  </label>
+                  <select style={{ ...s.input, opacity: bulkEdit && bulkChanges.size === undefined ? 0.45 : 1, borderColor: bulkEdit && bulkChanges.size !== undefined ? 'var(--amber)' : '#44403C' }}
+                    value={currentKeg.size} onChange={e => updateField('size', e.target.value)}>
+                    {bulkEdit && bulkChanges.size === undefined && <option value="">— keep existing —</option>}
                     {SIZE_OPTIONS.map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
 
+                {/* Batch + Invoice */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={s.label}>Batch Number</label>
-                    <input type="text" style={s.input} value={currentKeg.batch_number}
-                      onChange={e => setCurrentKeg({ ...currentKeg, batch_number: e.target.value })} />
+                    <label style={{ ...s.label, color: bulkEdit && bulkChanges.batch_number !== undefined ? 'var(--amber)' : 'var(--muted)' }}>
+                      Batch # {bulkEdit && bulkChanges.batch_number !== undefined && <span style={{ fontSize: 10 }}>●</span>}
+                    </label>
+                    <input type="text" style={{ ...s.input, opacity: bulkEdit && bulkChanges.batch_number === undefined ? 0.45 : 1, borderColor: bulkEdit && bulkChanges.batch_number !== undefined ? 'var(--amber)' : '#44403C' }}
+                      value={currentKeg.batch_number} placeholder={bulkEdit ? 'Keep existing…' : ''}
+                      onChange={e => updateField('batch_number', e.target.value)} />
                   </div>
                   <div>
-                    <label style={s.label}>Invoice Number</label>
-                    <input type="text" style={s.input} value={currentKeg.invoice_number}
-                      onChange={e => setCurrentKeg({ ...currentKeg, invoice_number: e.target.value })} />
+                    <label style={{ ...s.label, color: bulkEdit && bulkChanges.invoice_number !== undefined ? 'var(--amber)' : 'var(--muted)' }}>
+                      Invoice # {bulkEdit && bulkChanges.invoice_number !== undefined && <span style={{ fontSize: 10 }}>●</span>}
+                    </label>
+                    <input type="text" style={{ ...s.input, opacity: bulkEdit && bulkChanges.invoice_number === undefined ? 0.45 : 1, borderColor: bulkEdit && bulkChanges.invoice_number !== undefined ? 'var(--amber)' : '#44403C' }}
+                      value={currentKeg.invoice_number} placeholder={bulkEdit ? 'Keep existing…' : ''}
+                      onChange={e => updateField('invoice_number', e.target.value)} />
                   </div>
                 </div>
 
-                {/* Can Count — only visible when CAN size is selected */}
+                {/* Can Count */}
                 {isCan(currentKeg.size) && (
                   <div className="slide-in">
-                    <label style={{ ...s.label, color: '#A5B4FC' }}>Can Count</label>
-                    <input type="number" min="0" style={{ ...s.input, border: '1px solid rgba(99,102,241,0.4)' }}
+                    <label style={{ ...s.label, color: bulkEdit && bulkChanges.can_count !== undefined ? '#A5B4FC' : 'var(--muted)' }}>
+                      Can Count {bulkEdit && bulkChanges.can_count !== undefined && <span style={{ fontSize: 10, marginLeft: 6 }}>● will update</span>}
+                    </label>
+                    <input type="number" min="0"
+                      style={{ ...s.input, border: `1px solid ${bulkEdit && bulkChanges.can_count !== undefined ? 'rgba(99,102,241,0.6)' : 'rgba(99,102,241,0.25)'}`, opacity: bulkEdit && bulkChanges.can_count === undefined ? 0.45 : 1 }}
                       placeholder="Number of cans" value={currentKeg.can_count}
-                      onChange={e => setCurrentKeg({ ...currentKeg, can_count: e.target.value })} />
+                      onChange={e => updateField('can_count', e.target.value)} />
+                  </div>
+                )}
+
+                {/* Changed fields summary */}
+                {bulkEdit && Object.keys(bulkChanges).length > 0 && (
+                  <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--muted)' }}>
+                    Will update: <span style={{ color: 'var(--amber)', fontWeight: 600 }}>{Object.keys(bulkChanges).join(', ').replace(/_/g, ' ')}</span>
                   </div>
                 )}
               </div>

@@ -68,7 +68,7 @@ export default function App() {
               </svg>
             </div>
             <h1 className="font-display text-3xl" style={{ color: 'var(--amber)', lineHeight: 1 }}>
-              KEG TRACKER
+              MADUENO BREWING CO.
             </h1>
           </div>
 

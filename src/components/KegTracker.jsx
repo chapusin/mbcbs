@@ -8,7 +8,7 @@ const STATUS_OPTIONS = [
   'Full | In stock',
   'Full | Delivered',
   'Dirty | In stock',
-  'Dirty | Washing',
+  'Dirty | Remote',
 ]
 
 const SIZE_OPTIONS = ['20L', '30L', '50L', '60L', 'CAN12', 'CAN16']
